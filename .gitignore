@@ -8,3 +8,9 @@ node_modules/
 
 # Editor/IDE local settings
 .vscode/
+
+#func de criação de users
+
+create_users.py
+update_user_names.py
+verify_user_names.py
