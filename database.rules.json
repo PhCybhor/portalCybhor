@@ -4,9 +4,16 @@
     "users": {
       "$uid": {
         ".read": "auth != null",
-        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'Admin')",
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'Admin' || (auth.uid === $uid && (!data.exists() || newData.child('role').val() === data.child('role').val())))",
+        ".validate": "newData.hasChildren(['name', 'email', 'role', 'profileMessage', 'profileCreatedAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 80 && newData.child('email').isString() && newData.child('email').val().matches(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/) && newData.child('role').val().matches(/^(Integrante|Admin|Visualizador)$/) && newData.child('profileMessage').isString() && newData.child('profileMessage').val().length <= 300 && newData.child('profileCreatedAt').isNumber() && (!data.exists() || newData.child('profileCreatedAt').val() === data.child('profileCreatedAt').val())",
         "role": {
-          ".validate": "newData.val() === 'Integrante' || newData.val() === 'Admin' || newData.val() === 'Visualizador'"
+          ".validate": "newData.val().matches(/^(Integrante|Admin|Visualizador)$/)"
+        },
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().matches(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/)"
         },
         "profileMessage": {
           ".validate": "newData.isString() && newData.val().length <= 300"
@@ -23,16 +30,19 @@
     "tasks": {
       ".read": "auth != null",
       "$taskId": {
-        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'Admin' || (root.child('users').child(auth.uid).child('role').val() === 'Integrante' && newData.exists()))"
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'Admin' || (!data.exists() && newData.child('creatorId').val() === auth.uid) || (data.exists() && (auth.uid === data.child('creatorId').val() || auth.uid === data.child('assigneeId').val())))",
+        ".validate": "newData.hasChildren(['title', 'description', 'priority', 'assigneeId', 'stageId', 'creatorId', 'createdAt', 'scheduledAt', 'status']) && newData.child('title').isString() && newData.child('title').val().length > 0 && newData.child('title').val().length <= 120 && newData.child('description').isString() && newData.child('description').val().length <= 2000 && newData.child('priority').val().matches(/^(low|medium|high)$/) && newData.child('assigneeId').isString() && newData.child('stageId').isString() && newData.child('creatorId').isString() && newData.child('createdAt').isNumber() && newData.child('scheduledAt').isNumber() && newData.child('status').val().matches(/^(pending|done|failed)$/) && (!data.exists() || newData.child('creatorId').val() === data.child('creatorId').val()) && (!data.exists() || newData.child('createdAt').val() === data.child('createdAt').val()) && (!data.exists() || newData.child('scheduledAt').val() === data.child('scheduledAt').val())"
       }
     },
     "ideas": {
       ".read": "auth != null",
       "$ideaId": {
-        ".write": "auth != null && ((!data.exists() && newData.exists()) || (data.exists() && root.child('users').child(auth.uid).child('role').val() === 'Admin'))",
+        ".write": "auth != null && ((!data.exists() && newData.child('authorId').val() === auth.uid) || (data.exists() && root.child('users').child(auth.uid).child('role').val() === 'Admin'))",
+        ".validate": "newData.hasChildren(['title', 'description', 'authorId', 'authorName', 'status', 'createdAt']) && newData.child('title').isString() && newData.child('title').val().length > 0 && newData.child('title').val().length <= 120 && newData.child('description').isString() && newData.child('description').val().length <= 2000 && newData.child('authorId').isString() && newData.child('authorId').val() === auth.uid && newData.child('authorName').isString() && newData.child('authorName').val().length > 0 && newData.child('status').val().matches(/^(pending|approved|discarded)$/) && newData.child('createdAt').isNumber() && (!data.exists() || newData.child('authorId').val() === data.child('authorId').val()) && (!data.exists() || newData.child('createdAt').val() === data.child('createdAt').val())",
         "votes": {
           "$voterUid": {
-            ".write": "auth != null && auth.uid === $voterUid"
+            ".write": "auth != null && auth.uid === $voterUid",
+            ".validate": "newData.isBoolean()"
           }
         }
       }
