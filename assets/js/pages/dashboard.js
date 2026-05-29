@@ -172,6 +172,61 @@ function computeStatsByUser() {
   return mapped;
 }
 
+function escapeCsvCell(value) {
+  const text = value === undefined || value === null ? '' : String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function formatCsvDate(ms) {
+  if (!ms) return '';
+  return new Date(ms).toISOString().replace('T', ' ').replace('Z', '');
+}
+
+function buildDashboardCsv() {
+  const totalTasks = Object.keys(tasks).length;
+  const doneTasks = Object.values(tasks).filter(t => t.status === 'done').length;
+  const failedTasks = Object.values(tasks).filter(t => t.status === 'failed').length;
+  const otherTasks = totalTasks - doneTasks - failedTasks;
+
+  const statsByUser = computeStatsByUser();
+  const taskRows = Object.keys(tasks)
+    .map(id => ({ id, ...tasks[id] }))
+    .sort((a, b) => (b.completedAt || b.createdAt || 0) - (a.completedAt || a.createdAt || 0))
+    .map(task => [
+      task.title || '-',
+      users[task.assigneeId] ? users[task.assigneeId].name : (task.assigneeId || '-'),
+      stages[task.stageId] ? stages[task.stageId].title : (task.stageId || '-'),
+      task.status || 'pending',
+      task.priority || '-',
+      (task.description || '').replace(/\r?\n/g, ' '),
+      formatCsvDate(task.createdAt),
+      formatCsvDate(task.completedAt)
+    ]);
+
+  const lines = [];
+  lines.push('Resumo do Dashboard');
+  lines.push('Metrica,Valor');
+  lines.push(`Total de tarefas,${totalTasks}`);
+  lines.push(`Concluídas,${doneTasks}`);
+  lines.push(`Falhas,${failedTasks}`);
+  lines.push(`Outras,${otherTasks}`);
+  lines.push('');
+  lines.push('Desempenho por usuário');
+  lines.push('Usuário,Concluídas,Falhas');
+  Object.keys(statsByUser).sort((a, b) => a.localeCompare(b)).forEach(userName => {
+    const userStats = statsByUser[userName];
+    lines.push(`${escapeCsvCell(userName)},${userStats.done || 0},${userStats.failed || 0}`);
+  });
+  lines.push('');
+  lines.push('Detalhes das tarefas');
+  lines.push('Título,Responsável,Etapa,Status,Prioridade,Descrição,Data de criação,Data de conclusão');
+  taskRows.forEach(row => {
+    lines.push(row.map(cell => escapeCsvCell(cell)).join(','));
+  });
+
+  return lines.join('\n');
+}
+
 function attachActions() {
   btnRefresh.addEventListener('click', () => {
     // force rebuild from current memory
@@ -194,14 +249,16 @@ function attachActions() {
   document.body.classList.add('dashboard-page');
 
   btnExport.addEventListener('click', () => {
-    // simple CSV export of current table
-    const rows = Array.from(document.querySelectorAll('#tasks-table tbody tr'));
-    const csv = ['Título,Assignee,Etapa,Concluído em,Status']
-      .concat(rows.map(r => Array.from(r.children).map(td => '"' + td.textContent.replace(/"/g, '""') + '"').join(','))).join('\n');
+    const csv = buildDashboardCsv();
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'tasks_dashboard.csv'; document.body.appendChild(a); a.click(); a.remove();
+    a.href = url;
+    a.download = 'dashboard_export.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   });
 
   btnClear.addEventListener('click', () => {
