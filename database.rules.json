@@ -1,0 +1,35 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    "users": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'Admin')",
+        "role": {
+          ".validate": "newData.val() === 'Integrante' || newData.val() === 'Admin' || newData.val() === 'Visualizador'"
+        }
+      }
+    },
+    "stages": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'Admin'"
+    },
+    "tasks": {
+      ".read": "auth != null",
+      "$taskId": {
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'Admin' || (root.child('users').child(auth.uid).child('role').val() === 'Integrante' && newData.exists()))"
+      }
+    },
+    "ideas": {
+      ".read": "auth != null",
+      "$ideaId": {
+        ".write": "auth != null && ((!data.exists() && newData.exists()) || (data.exists() && root.child('users').child(auth.uid).child('role').val() === 'Admin'))",
+        "votes": {
+          "$voterUid": {
+            ".write": "auth != null && auth.uid === $voterUid"
+          }
+        }
+      }
+    }
+  }
+}
